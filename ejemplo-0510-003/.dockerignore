@@ -1,0 +1,20 @@
+# Dependencias: se instalan dentro de la imagen con `npm ci`
+node_modules
+npm-debug.log*
+
+# Instrucciones y documentación (no se necesitan dentro de la imagen)
+README.md
+*.md
+
+# Archivos de construcción de Docker
+Dockerfile
+.dockerignore
+
+# Variables de entorno / secretos locales
+.env
+.env.*
+
+# Control de versiones y sistema operativo
+.git
+.gitignore
+.DS_Store

@@ -42,17 +42,76 @@ docker run -d --name servidor-express_c -p 3000:3000 servidor-express:v1
 
    Debe mostrar: `Servidor corriendo en http://localhost:3000`.
 
-3. Cambiar el puerto con una variable de entorno:
+## Entrar al contenedor
+
+1. Abrir una shell dentro del contenedor en ejecución:
 
    ```bash
-   docker run -d --name servidor-express-8080_c -e PORT=8080 -p 8080:8080 servidor-express:v1
-   curl http://localhost:8080/
+   docker exec -it servidor-express_c sh
    ```
 
-4. Verificar que el `.dockerignore` funcionó (no deben aparecer `README.md` ni `Dockerfile`):
+2. Listar los archivos de la aplicación:
 
    ```bash
-   docker run --rm servidor-express:v1 ls -a /app
+   ls
+   ```
+
+   Salida esperada:
+
+   ```
+   Dockerfile  node_modules  package-lock.json  package.json  servidor.js
+   ```
+
+3. Ver la versión del kernel:
+
+   ```bash
+   uname -r
+   ```
+
+   Salida esperada (varía según el host):
+
+   ```
+   7.0.14-orbstack-00380-ga7e0a2dc9535
+   ```
+
+4. Ver la distribución del sistema operativo de la imagen:
+
+   ```bash
+   cat /etc/os-release
+   ```
+
+   Salida esperada:
+
+   ```
+   PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+   NAME="Debian GNU/Linux"
+   VERSION_ID="12"
+   VERSION="12 (bookworm)"
+   VERSION_CODENAME=bookworm
+   ID=debian
+   HOME_URL="https://www.debian.org/"
+   SUPPORT_URL="https://www.debian.org/support"
+   BUG_REPORT_URL="https://bugs.debian.org/"
+   ```
+
+5. Ver la información completa del kernel:
+
+   ```bash
+   cat /proc/version
+   ```
+
+   Salida esperada (varía según el host):
+
+   ```
+   Linux version 7.0.14-orbstack-00380-ga7e0a2dc9535 (orbstack@builder) (ClangBuiltLinux clang version 22.1.3 (https://github.com/llvm/llvm-project.git e9846648fd6183ee6d8cbdb4502213fcf902a211), ClangBuiltLinux LLD 22.1.3 (https://github.com/llvm/llvm-project.git e9846648fd6183ee6d8cbdb4502213fcf902a211)) #1 SMP PREEMPT Fri Aug 7 03:48:40 UTC 2026
+   ```
+
+   El sistema de archivos es Debian (viene de la imagen `node:20-slim`), pero el kernel es el del host (aquí, la VM de OrbStack): los contenedores **comparten el kernel** del host.
+
+6. Salir del contenedor (sigue corriendo):
+
+   ```bash
+   exit
    ```
 
 ## Limpiar

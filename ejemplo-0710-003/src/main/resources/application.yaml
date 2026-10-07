@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: curso
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=curso;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: YourStrong!Passw0rd
+  jpa:
+    hibernate:
+      ddl-auto: update
+server:
+  port: 8081

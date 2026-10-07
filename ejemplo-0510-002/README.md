@@ -7,13 +7,15 @@ Imagen basada en `alpine` que ejecuta `holaMundo.sh` e imprime todos los paráme
 Desde esta carpeta:
 
 ```bash
-docker build -t ejemplo-0510-002 .
+docker build -t hola-mundo:v1 .
 ```
+
+La etiqueta `:v1` indica la versión de la imagen. Una misma imagen puede tener varias versiones (`:v1`, `:v2`, ...) y si no se pone etiqueta Docker usa `:latest`.
 
 ## Correr
 
 ```bash
-docker run --rm ejemplo-0510-002
+docker run --rm --name hola-mundo_c hola-mundo:v1
 ```
 
 Salida esperada:
@@ -30,7 +32,7 @@ Parametro: 8080
 1. Reemplazar solo los argumentos del `CMD` (el `ENTRYPOINT` se conserva):
 
    ```bash
-   docker run --rm ejemplo-0510-002 --port 9090
+   docker run --rm --name hola-mundo_c hola-mundo:v1 --port 9090
    ```
 
    Salida esperada:
@@ -45,18 +47,17 @@ Parametro: 8080
 2. Sobrescribir el `ENTRYPOINT` para abrir una shell dentro del contenedor:
 
    ```bash
-   docker run --rm -it --entrypoint sh ejemplo-0510-002
+   docker run --rm --name hola-mundo_c -it --entrypoint sh hola-mundo:v1
    ```
 
 3. Revisar la configuración de la imagen:
 
    ```bash
-   docker image inspect ejemplo-0510-002 --format 'Entrypoint={{.Config.Entrypoint}} Cmd={{.Config.Cmd}}'
+   docker image inspect hola-mundo:v1 --format 'Entrypoint={{.Config.Entrypoint}} Cmd={{.Config.Cmd}}'
    ```
 
 ## Limpiar
 
 ```bash
-docker rmi ejemplo-0510-002
+docker rmi hola-mundo:v1
 ```
-

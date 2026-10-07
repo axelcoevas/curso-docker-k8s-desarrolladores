@@ -2,9 +2,9 @@ spring:
   application:
     name: curso
   datasource:
-    url: jdbc:sqlserver://localhost:1433;databaseName=curso;encrypt=true;trustServerCertificate=true
-    username: sa
-    password: YourStrong!Passw0rd
+    url: ${URL_SQLSERVER}
+    username: ${USER_NAME}
+    password: ${PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update

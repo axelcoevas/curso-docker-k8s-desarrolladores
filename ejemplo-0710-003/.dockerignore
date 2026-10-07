@@ -1,0 +1,30 @@
+# Compilación local: el jar se genera dentro de la imagen con `mvn clean package`
+target
+
+# Maven Wrapper: la imagen ya trae Maven
+mvnw
+mvnw.cmd
+.mvn
+
+# Archivos de construcción de Docker
+Dockerfile
+.dockerignore
+
+# Instrucciones y documentación (no se necesitan dentro de la imagen)
+README.md
+HELP.md
+*.md
+
+# Variables de entorno / secretos locales
+.env
+.env.*
+
+# Configuración del editor
+.vscode
+.idea
+*.iml
+
+# Control de versiones y sistema operativo
+.git
+.gitignore
+.DS_Store

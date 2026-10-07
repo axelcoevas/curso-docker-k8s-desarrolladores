@@ -5,7 +5,7 @@ API REST con Spring Boot 4.1.1 (Java 17), Spring Data JPA y SQL Server. Expone `
 ## Requisitos
 
 - Java 17 y Maven.
-- VS Code con la extensión **Spring Boot Extension Pack** (incluye *Spring Initializr Java Support*).
+- VS Code con la extensión **Spring Boot Extension Pack** (incluye _Spring Initializr Java Support_).
 - El contenedor `sqlserver` del [ejemplo-0710-002](../ejemplo-0710-002/README.md) corriendo y la base `curso` creada con [`migration_001.sql`](../ejemplo-0710-002/migration_001.sql).
 
 ## Crear el proyecto con la extensión de VS Code
@@ -13,14 +13,14 @@ API REST con Spring Boot 4.1.1 (Java 17), Spring Data JPA y SQL Server. Expone `
 1. Abrir la paleta de comandos (`Cmd+Shift+P` / `Ctrl+Shift+P`) y ejecutar **Spring Initializr: Create a Maven Project...**.
 2. Elegir estos valores:
 
-   | Opción              | Valor                                                    |
-   | ------------------- | -------------------------------------------------------- |
-   | Spring Boot version | `4.1.1`                                                  |
-   | Lenguaje            | Java                                                     |
-   | Group Id            | `org.banxico`                                            |
-   | Artifact Id         | `curso`                                                  |
-   | Packaging           | Jar                                                      |
-   | Java version        | `17`                                                     |
+   | Opción              | Valor                                                     |
+   | ------------------- | --------------------------------------------------------- |
+   | Spring Boot version | `4.1.1`                                                   |
+   | Lenguaje            | Java                                                      |
+   | Group Id            | `org.banxico`                                             |
+   | Artifact Id         | `curso`                                                   |
+   | Packaging           | Jar                                                       |
+   | Java version        | `17`                                                      |
    | Dependencias        | Spring Web, Spring Data JPA, MS SQL Server Driver, Lombok |
 
 3. Elegir la carpeta donde se genera el proyecto. Se crea con la clase principal `src/main/java/org/banxico/curso/CursoApplication.java`.
@@ -34,9 +34,9 @@ spring:
   application:
     name: curso
   datasource:
-    url: jdbc:sqlserver://localhost:1433;databaseName=curso;encrypt=true;trustServerCertificate=true
-    username: sa
-    password: YourStrong!Passw0rd
+    url: ${URL_SQLSERVER}
+    username: ${USER_NAME}
+    password: ${PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -44,7 +44,8 @@ server:
   port: 8081
 ```
 
-- `trustServerCertificate=true`: el certificado del contenedor es autofirmado. Sin esta opción la aplicación no arranca y muestra el error `PKIX path building failed`.
+- `${URL_SQLSERVER}`, `${USER_NAME}` y `${PASSWORD}`: los datos de conexión se leen de variables de entorno, así no quedan escritos dentro de la imagen y la misma imagen sirve para cualquier servidor.
+- `trustServerCertificate=true` (va en la URL): el certificado del contenedor es autofirmado. Sin esta opción la aplicación no arranca y muestra el error `PKIX path building failed`.
 - `ddl-auto: update`: Hibernate crea la tabla `alumnos` a partir del modelo si todavía no existe.
 
 ## Crear el modelo
@@ -140,9 +141,13 @@ public class AlumnoController {
 
 ## Correr la aplicación
 
-Desde esta carpeta (se usa `mvn` porque el proyecto no incluye la carpeta `.mvn`, así que `./mvnw` no funciona):
+Desde esta carpeta, definir las variables de entorno (fuera de Docker el host es `localhost`) y arrancar con `mvn` (el proyecto no incluye la carpeta `.mvn`, así que `./mvnw` no funciona):
 
 ```bash
+export URL_SQLSERVER='jdbc:sqlserver://localhost:1433;databaseName=curso;encrypt=true;trustServerCertificate=true'
+export USER_NAME=sa
+export PASSWORD='YourStrong!Passw0rd'
+
 mvn spring-boot:run
 ```
 
@@ -162,13 +167,13 @@ En otra terminal:
    ```bash
    curl -X POST http://localhost:8081/alumnos \
      -H "Content-Type: application/json" \
-     -d '{"nombre":"Ana"}'
+     -d '{"nombre":"Levi"}'
    ```
 
    Salida esperada:
 
    ```json
-   {"id":1,"nombre":"Ana"}
+   { "id": 1, "nombre": "Levi" }
    ```
 
 2. Listar los alumnos:
@@ -180,9 +185,107 @@ En otra terminal:
    Salida esperada:
 
    ```json
-   [{"id":1,"nombre":"Ana"}]
+   [{ "id": 1, "nombre": "Levi" }]
    ```
 
 ## Detener
 
 En la terminal donde corre la aplicación, presionar `Ctrl+C`.
+
+## Construir la imagen
+
+El `Dockerfile` usa una construcción **multi-stage**:
+
+```dockerfile
+FROM maven:3.9-eclipse-temurin-17 AS build
+
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+COPY --from=build /app/target/curso-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+- **Etapa `build`** (imagen con Maven y JDK 17): compila el proyecto y genera el jar. Primero se copia solo el `pom.xml` y se descargan las dependencias; como esa capa queda en caché, al cambiar solo el código no se vuelven a descargar.
+- **Etapa final** (solo JRE 17, sin Maven ni código fuente): copia el jar de la etapa `build`. La imagen final es mucho más ligera.
+- `-DskipTests`: las pruebas se omiten porque necesitan conectarse a SQL Server, que no está disponible durante el build.
+
+Desde esta carpeta:
+
+```bash
+docker build -t servidor-spring:v1 .
+```
+
+## Definir las variables en el archivo .env
+
+El contenedor necesita las variables `URL_SQLSERVER`, `USER_NAME` y `PASSWORD`. Se toman de un archivo `.env` creado a partir de [`.env.example`](.env.example):
+
+```bash
+cp .env.example .env
+```
+
+Y poner los valores reales:
+
+```
+URL_SQLSERVER=jdbc:sqlserver://sqlserver:1433;databaseName=curso;encrypt=true;trustServerCertificate=true
+USER_NAME=sa
+PASSWORD=YourStrong!Passw0rd
+```
+
+- Dentro de Docker el host es **`sqlserver`** (el nombre del contenedor de SQL Server), no `localhost`: dentro de un contenedor, `localhost` es el propio contenedor. Si se deja `localhost`, la aplicación falla con `Connection refused` y después con `Unable to determine Dialect without JDBC metadata`.
+- En el `.env` los valores van sin comillas.
+- El `.env` no se sube a git (`.gitignore`) ni entra a la imagen (`.dockerignore`); solo `.env.example` se versiona.
+
+## Crear una red para que los contenedores se vean
+
+Para que `servidor-spring_c` encuentre a `sqlserver` por su nombre, ambos contenedores deben estar en la misma red definida por el usuario (en la red `bridge` por defecto los contenedores no se resuelven por nombre).
+
+1. Crear la red:
+
+   ```bash
+   docker network create red-curso
+   ```
+
+2. Conectar el contenedor de SQL Server que ya está corriendo (no hace falta recrearlo):
+
+   ```bash
+   docker network connect red-curso sqlserver
+   ```
+
+> En Linux (por ejemplo, Rocky Linux) también funciona correr el contenedor con `--network host` y `localhost` en la URL, porque el contenedor comparte la red del servidor. La red `red-curso` funciona igual en Mac, Windows y Linux.
+
+## Correr el contenedor
+
+```bash
+docker run -d --name servidor-spring_c \
+  --network red-curso \
+  -p 8081:8081 \
+  --env-file .env \
+  servidor-spring:v1
+```
+
+Verificar que arrancó:
+
+```bash
+docker logs servidor-spring_c | grep "Started CursoApplication"
+```
+
+Y probar con los mismos `curl` de la sección [Probar](#probar).
+
+## Limpiar
+
+```bash
+docker rm -f servidor-spring_c
+docker network disconnect red-curso sqlserver
+docker network rm red-curso
+docker rmi servidor-spring:v1
+```

@@ -1,0 +1,12 @@
+# Instrucciones y documentación (no se necesitan dentro de la imagen)
+README.md
+*.md
+
+# Archivos de construcción de Docker
+Dockerfile
+.dockerignore
+
+# Control de versiones y sistema operativo
+.git
+.gitignore
+.DS_Store

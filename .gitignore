@@ -1,0 +1,163 @@
+# =====================================================================
+# .gitignore - Curso Docker + Kubernetes (minikube)
+# Principalmente aplicaciones Java (Maven / Gradle / Spring Boot)
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Java / archivos compilados
+# ---------------------------------------------------------------------
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+*.log
+
+# ---------------------------------------------------------------------
+# Maven
+# ---------------------------------------------------------------------
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+# Conservar el Maven Wrapper
+!.mvn/wrapper/maven-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# ---------------------------------------------------------------------
+# Gradle
+# ---------------------------------------------------------------------
+.gradle/
+build/
+# Conservar el Gradle Wrapper
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ---------------------------------------------------------------------
+# Spring Boot / Spring Tool Suite
+# ---------------------------------------------------------------------
+.springBeans
+.sts4-cache/
+HELP.md
+
+# ---------------------------------------------------------------------
+# IDEs
+# ---------------------------------------------------------------------
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# VS Code (se conservan configuraciones compartibles)
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ---------------------------------------------------------------------
+# Sistema operativo
+# ---------------------------------------------------------------------
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+*~
+*.swp
+*.swo
+
+# ---------------------------------------------------------------------
+# Variables de entorno y secretos
+# NOTA: los Secrets de Kubernetes de ejemplo deben versionarse como
+#       *.example.yaml (sin valores reales).
+# ---------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+*.keystore
+secret*.local.yaml
+secret*.local.yml
+
+# ---------------------------------------------------------------------
+# Docker
+# ---------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
+# Datos de volúmenes locales (bases de datos, etc.)
+data/
+volumes/
+# Imágenes exportadas con `docker save`
+*.tar
+*.tar.gz
+
+# ---------------------------------------------------------------------
+# Kubernetes / minikube / Helm
+# ---------------------------------------------------------------------
+kubeconfig
+*.kubeconfig
+.kube/
+.minikube/
+# Paquetes y dependencias de Helm
+*.tgz
+**/charts/*/charts/
+.helm/
+
+# ---------------------------------------------------------------------
+# Otros lenguajes (apps de ejemplo no-Java)
+# ---------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ---------------------------------------------------------------------
+# Temporales
+# ---------------------------------------------------------------------
+tmp/
+*.tmp
+*.bak
+evidencias/

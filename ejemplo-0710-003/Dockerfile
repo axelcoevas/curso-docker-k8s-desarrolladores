@@ -9,7 +9,12 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
-COPY --from=build /app/target/curso-0.0.1-SNAPSHOT.jar app.jar
+
+RUN groupadd --system spring_group && useradd --system --gid spring_group --home-dir /app spring
+
+COPY --from=build --chown=spring /app/target/curso-0.0.1-SNAPSHOT.jar app.jar
+
+USER spring:spring_group
 
 EXPOSE 8081
 

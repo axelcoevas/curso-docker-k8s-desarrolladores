@@ -2,6 +2,7 @@ package org.banxico.curso.controller;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 import org.banxico.curso.entity.Alumno;
 import org.banxico.curso.repository.AlumnoRepository;
@@ -40,5 +41,14 @@ public class AlumnoController {
 
         Alumno alumnoCreado = alumnoRepository.save(alumno);
         return new ResponseEntity<>(alumnoCreado, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/loteria")
+    public Alumno loteria() {
+        List<Alumno> todos = alumnoRepository.findAll();
+
+        Random rand = new Random();
+
+        return todos.get(rand.nextInt(todos.size() - 1));
     }
 }

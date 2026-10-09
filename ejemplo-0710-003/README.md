@@ -273,6 +273,8 @@ docker run -d --name servidor-spring_c \
   servidor-spring:v1
 ```
 
+> `--env-file` es cómodo para el curso, pero no es la forma correcta de manejar contraseñas en producción. Ver [Seguridad de las variables y secretos](#seguridad-de-las-variables-y-secretos).
+
 Verificar que arrancó:
 
 ```bash
@@ -280,6 +282,179 @@ docker logs servidor-spring_c | grep "Started CursoApplication"
 ```
 
 Y probar con los mismos `curl` de la sección [Probar](#probar).
+
+## Seguridad de las variables y secretos
+
+- `--env-file .env` lo lee el **cliente Docker en el host**. El archivo no entra al contenedor: solo sus valores, convertidos en variables de entorno.
+- **No montar la carpeta del proyecto ni el `.env`** con `-v` (por ejemplo, `-v $(pwd):/app`). El contenedor podría leer y modificar archivos del host, y si alguien compromete la aplicación, se lleva las credenciales.
+- Aun con `--env-file`, las contraseñas quedan visibles para cualquiera con acceso a Docker:
+
+  ```bash
+  docker inspect servidor-spring_c --format '{{json .Config.Env}}'
+  docker exec servidor-spring_c env
+  ```
+
+  Ambos comandos muestran `PASSWORD=YourStrong!Passw0rd` en texto plano.
+
+### La forma correcta: secretos montados como archivo
+
+Un secreto se entrega al contenedor como **archivo** de solo lectura en `/run/secrets/<nombre>`, no como variable de entorno. Así no aparece en `docker inspect`, no lo heredan los procesos hijos y no se cuela en logs que impriman el entorno.
+
+| Herramienta                             | ¿Maneja secretos?                                | Cómo                                                                                                     |
+| --------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `docker run`                            | No (no existe `--secret`)                        | Solo `-e` / `--env-file`, visibles en `docker inspect`                                                   |
+| Docker Secrets (`docker secret create`) | Sí, solo en **modo Swarm** (`docker swarm init`) | Se guardan cifrados y se montan en `/run/secrets/`                                                       |
+| Docker Compose (`secrets:`)             | Sí, **sin Swarm**                                | Toma el secreto de un archivo (`file:`) o de una variable (`environment:`) y lo monta en `/run/secrets/` |
+| `docker build --secret`                 | Solo durante el build                            | Tokens que necesita el build sin que queden en la imagen (`RUN --mount=type=secret`)                     |
+| Kubernetes Secrets                      | Sí                                               | El equivalente en Kubernetes                                                                             |
+
+Para este ejemplo, lo adecuado sería **Docker Compose**. Ejemplo ilustrativo de `compose.yaml` (no se incluye en el proyecto):
+
+```yaml
+services:
+  servidor-spring:
+    image: servidor-spring:v1
+    container_name: servidor-spring_c
+    ports:
+      - "8081:8081"
+    environment:
+      URL_SQLSERVER: jdbc:sqlserver://sqlserver:1433;databaseName=curso;encrypt=true;trustServerCertificate=true
+      USER_NAME: sa
+    secrets:
+      - PASSWORD
+
+secrets:
+  PASSWORD:
+    file: ./secrets/password.txt # fuera de git (.gitignore)
+```
+
+Spring Boot puede leer cada archivo de `/run/secrets/` como una propiedad con el nombre del archivo. Bastaría agregar en `application.yaml`:
+
+```yaml
+spring:
+  config:
+    import: optional:configtree:/run/secrets/
+```
+
+Con esto, `${PASSWORD}` toma el valor de `/run/secrets/PASSWORD`. El `optional:` permite seguir arrancando con `mvn spring-boot:run` y variables de entorno cuando esa carpeta no existe.
+
+- **Fuera de Swarm, Compose no cifra el secreto**: solo monta el archivo del host, en modo solo lectura. Aun así es mejor que una variable de entorno.
+- Fuera de Swarm, Compose ignora `uid`, `gid` y `mode` del secreto; el archivo conserva sus permisos del host, y el usuario `spring` (ver la siguiente sección) debe poder leerlo.
+- Montar **un solo archivo** de secreto, de solo lectura, no es lo mismo que montar carpetas completas del host.
+
+## Correr la aplicación sin root
+
+Por defecto, el proceso de un contenedor corre como `root`. Si alguien explota una falla de la aplicación, tendría root dentro del contenedor y más posibilidades de escapar al host. Por eso la etapa final del `Dockerfile` crea un usuario sin privilegios:
+
+```dockerfile
+RUN groupadd --system spring_group && useradd --system --gid spring_group --home-dir /app spring
+
+COPY --from=build --chown=spring /app/target/curso-0.0.1-SNAPSHOT.jar app.jar
+
+USER spring:spring_group
+```
+
+- `groupadd --system` / `useradd --system`: crean un grupo y un usuario **de sistema** (UID bajo, sin contraseña ni shell de login), con `/app` como directorio home.
+- `useradd` / `groupadd` son los comandos de la imagen `eclipse-temurin`, basada en Ubuntu. En imágenes Alpine se usan `addgroup -S` y `adduser -S`.
+- `--chown=spring`: `app.jar` pertenece a `spring` y no a `root`. Como no se indica grupo, Docker usa como GID el mismo número que el UID, no `spring_group`; funciona porque el jar solo se lee, pero es más claro escribir `--chown=spring:spring_group`.
+- `USER spring:spring_group`: desde esta línea, y al arrancar el contenedor, el proceso `java` corre con ese usuario.
+
+Verificar:
+
+```bash
+docker exec servidor-spring_c whoami
+```
+
+Salida esperada:
+
+```
+spring
+```
+
+## Activar SELinux en Docker (Rocky Linux)
+
+SELinux etiqueta cada proceso y archivo, y el kernel solo permite los accesos que la política autoriza. Con SELinux activo en Docker, los procesos de los contenedores corren con la etiqueta `container_t` y no pueden tocar archivos del host aunque logren escapar del contenedor.
+
+Para que Docker use SELinux se necesitan dos cosas: el **kernel** con SELinux activo y el **daemon** de Docker configurado para usarlo. Solo es posible en Linux; en Mac y Windows Docker corre dentro de una VM cuyo kernel no tiene SELinux (ver la siguiente sección).
+
+1. Revisar que SELinux esté activo. En Rocky Linux viene así por defecto:
+
+   ```bash
+   getenforce
+   ```
+
+   Salida esperada:
+
+   ```
+   Enforcing
+   ```
+
+   Si responde `Disabled`, editar `/etc/selinux/config`, poner `SELINUX=enforcing`, pedir que se reetiqueten los archivos y reiniciar:
+
+   ```bash
+   sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+   sudo touch /.autorelabel
+   sudo reboot
+   ```
+
+2. Revisar que esté instalada la política de SELinux para contenedores (normalmente ya la instaló `docker-ce` como dependencia):
+
+   ```bash
+   rpm -q container-selinux || sudo dnf install -y container-selinux
+   ```
+
+3. Habilitar SELinux en el daemon de Docker con `/etc/docker/daemon.json` (si el archivo ya existe, agregar solo la clave):
+
+   ```bash
+   echo '{ "selinux-enabled": true }' | sudo tee /etc/docker/daemon.json
+   sudo systemctl restart docker
+   ```
+
+4. Verificar la etiqueta de un contenedor:
+
+   ```bash
+   docker inspect servidor-spring_c --format '{{.ProcessLabel}}'
+   ```
+
+   Salida esperada (las categorías `c123,c456` cambian en cada contenedor):
+
+   ```
+   system_u:system_r:container_t:s0:c123,c456
+   ```
+
+   El contenedor se debe recrear (`docker rm -f` y `docker run`) para que tome la etiqueta.
+
+> Con SELinux activo, un volumen montado con `-v` puede dar `Permission denied` dentro del contenedor. Se agrega `:z` (volumen compartido entre contenedores) o `:Z` (privado del contenedor) para que Docker le ponga la etiqueta correcta, por ejemplo `-v ./datos:/datos:Z`.
+
+## Opciones de seguridad del daemon
+
+```bash
+docker info --format '{{json .SecurityOptions}}'
+```
+
+**Mac o Windows** (OrbStack o Docker Desktop):
+
+```json
+["name=seccomp,profile=builtin","name=cgroupns"]
+```
+
+**Rocky Linux** con SELinux activado (sección anterior):
+
+```json
+["name=seccomp,profile=builtin","name=selinux","name=cgroupns"]
+```
+
+- `name=seccomp,profile=builtin`: el kernel aplica a cada contenedor el perfil seccomp por defecto de Docker, que bloquea llamadas al sistema peligrosas (`mount`, `reboot`, carga de módulos del kernel, etc.). Aparece en los tres sistemas.
+- `name=cgroupns`: cada contenedor tiene su propio _namespace_ de cgroups, así que no ve los grupos de recursos del host ni los de otros contenedores. Aparece en los tres sistemas.
+- `name=selinux`: solo aparece en Rocky Linux. En Mac y Windows Docker corre dentro de una VM Linux (OrbStack, Docker Desktop o WSL2) cuyo kernel no tiene SELinux, así que no hay forma de activarlo ahí.
+
+Otros valores que pueden aparecer en otros servidores:
+
+- `name=apparmor`: AppArmor activo, el equivalente a SELinux en Ubuntu y Debian.
+- `name=userns`: el root del contenedor se mapea a un usuario sin privilegios del host.
+- `name=rootless`: el daemon de Docker corre sin root.
+
+Estas opciones son seguridad **del daemon** y aplican a todos los contenedores; `USER spring` es seguridad **de la imagen**. Las dos se complementan.
 
 ## Limpiar
 

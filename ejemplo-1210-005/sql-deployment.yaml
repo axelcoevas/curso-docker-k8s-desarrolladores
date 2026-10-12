@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sqlserver-data
+spec:
+  accessModes:
+    - ReadWriteOnce # Solo un nodo puede montarlo a la vez (equivale al volumen sqlserver_data de Docker)
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlserver-deployment
+  labels:
+    app: sqlserver-deployment
+spec:
+  replicas: 1 # SQL Server no se replica así: cada réplica sería una base distinta y competirían por el mismo volumen
+  strategy:
+    type: Recreate # Apaga el pod viejo antes de crear el nuevo, para que nunca haya dos SQL Server usando el mismo volumen
+  selector:
+    matchLabels:
+      app: sqlserver-deployment
+  template:
+    metadata:
+      labels:
+        app: sqlserver-deployment
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: sqlserver-c
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 1433
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef: # La contraseña se toma del Secret sqlserver-secret, no se escribe aquí
+                  name: sqlserver-secret
+                  key: MSSQL_SA_PASSWORD
+          resources:
+            requests:
+              memory: 2Gi # SQL Server necesita al menos 2 GB para arrancar
+            limits:
+              memory: 3Gi
+          volumeMounts:
+            - name: datos
+              mountPath: /var/opt/mssql
+      volumes:
+        - name: datos
+          persistentVolumeClaim:
+            claimName: sqlserver-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlserver # Dentro del clúster, las aplicaciones se conectan a sqlserver:1433, igual que en la red de Docker
+spec:
+  selector:
+    app: sqlserver-deployment
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 1433
+      targetPort: 1433

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: servidor-express-pod
+  labels:
+    app: app-express-pod
+spec:
+  restartPolicy: Always
+  containers:
+    - name: servidor-express-c
+      image: servidor-express:v2
+      ports:
+        - containerPort: 3000
+      imagePullPolicy: IfNotPresent

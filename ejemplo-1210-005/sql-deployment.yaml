@@ -7,7 +7,7 @@ spec:
     - ReadWriteOnce # Solo un nodo puede montarlo a la vez (equivale al volumen sqlserver_data de Docker)
   resources:
     requests:
-      storage: 5Gi
+      storage: 400Mi
 ---
 apiVersion: apps/v1
 kind: Deployment

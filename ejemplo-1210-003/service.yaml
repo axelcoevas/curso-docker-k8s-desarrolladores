@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: servidor-express-replica-service
+spec:
+  selector:
+    app: app-express-replica-set
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000 # Este es el puerto en el que escucha nestro servicio (interno)

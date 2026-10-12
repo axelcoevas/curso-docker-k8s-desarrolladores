@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: servidor-express-replica-set
+  labels:
+    app: app-express-replica-set
+spec:
+  replicas: 3 # Tiene como responsabilidad escanear el cluster y asegurar que se cumpla, replicas = 3
+  selector:
+    matchLabels:
+      app: app-express-replica-set # Ayuda a encontrar el replicaSet
+  template:
+    metadata:
+      labels:
+        app: app-express-replica-set # Para poder asociar los pods al ReplicaSet. Para que un service pueda encontrar los pods.
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: servidor-express-c
+          image: servidor-express:v2
+          ports:
+            - containerPort: 3000
+          imagePullPolicy: IfNotPresent

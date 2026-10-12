@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: servidor-express-deployment
+  annotations:
+    kubernetes.io/change-cause: "Se agregaron nuevos endpoints"
+  labels:
+    app: app-express-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-express-deployment
+  template:
+    metadata:
+      labels:
+        app: app-express-deployment
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: servidor-express-c
+          image: servidor-express:v4
+          ports:
+            - containerPort: 3000
+          imagePullPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: servidor-express-deployment-service
+spec:
+  selector:
+    app: app-express-deployment
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000 # Este es el puerto en el que escucha nestro servicio (interno)
+

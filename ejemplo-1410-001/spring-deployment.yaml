@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: servidor-spring-deployment
+  labels:
+    app: servidor-spring-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: servidor-spring-deployment
+  template:
+    metadata:
+      labels:
+        app: servidor-spring-deployment
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: servidor-spring-c
+          image: servidor-spring:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8081
+          env:
+            - name: URL_SQLSERVER
+              value: jdbc:sqlserver://sqlserver:1433;databaseName=curso;encrypt=true;trustServerCertificate=true # "sqlserver" es el nombre del Service de SQL Server
+            - name: USER_NAME
+              value: sa
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef: # La contraseña se toma del Secret sqlserver-secret, no se escribe aquí
+                  name: sqlserver-secret
+                  key: MSSQL_SA_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: servidor-spring-service
+spec:
+  selector:
+    app: servidor-spring-deployment
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081

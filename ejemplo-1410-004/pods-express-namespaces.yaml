@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: servidor-express
+  namespace: namespace-desarrollo
+  labels:
+    app: servidor-express
+spec:
+  containers:
+    - name: servidor-express-c
+      image: servidor-express:v4
+      imagePullPolicy: Never # La imagen se cargó con "minikube image load"; no existe en ningún registro
+      ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: servidor-express
+  namespace: namespace-operaciones
+  labels:
+    app: servidor-express
+spec:
+  containers:
+    - name: servidor-express-c
+      image: servidor-express:v4
+      imagePullPolicy: Never # La imagen se cargó con "minikube image load"; no existe en ningún registro
+      ports:
+        - containerPort: 3000

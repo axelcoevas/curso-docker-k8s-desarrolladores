@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: desarrollo-nginx-service
+  namespace: namespace-desarrollo
+spec:
+  selector:
+    run: servidor-ngnix
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80 # Este es el puerto en el que escucha nestro servicio (interno)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: operaciones-nginx-service
+  namespace: namespace-operaciones
+spec:
+  selector:
+    run: servidor-ngnix
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80 # Este es el puerto en el que escucha nestro servicio (interno)

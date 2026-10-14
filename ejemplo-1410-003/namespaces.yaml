@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: namespace-desarrollo
+  labels:
+    environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: namespace-operaciones
+  labels:
+    environment: ops
